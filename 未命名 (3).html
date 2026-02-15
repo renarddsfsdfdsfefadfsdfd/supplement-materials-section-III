@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>III. METHODOLOGY</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Times New Roman', Times, serif;
+        }
+        body {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        h3 {
+            font-size: 22px;
+            margin: 20px 0 15px;
+            font-weight: bold;
+        }
+        h4 {
+            font-size: 18px;
+            margin: 18px 0 12px;
+            font-weight: bold;
+        }
+        p {
+            margin: 10px 0;
+            text-align: justify;
+        }
+        .algorithm {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            line-height: 1.8;
+        }
+        .math {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <h3>III. METHODOLOGY</h3>
+    <h4>A. Adaptive Prototype Attention Architecture</h4>
+    <p>Our proposed Adaptive Prototype Attention (APA) mechanism addresses the limitations of existing attention approaches through a unified framework that integrates task-aware modulation, prototype guidance, and multi-scale aggregation. The architecture consists of three primary components working in concert to optimize attention distribution for few-shot learning scenarios.</p>
+    <p>The task-aware attention weight modulation component dynamically adjusts attention patterns based on task context. Given input sequence \(X \in \mathbb{R}^{n ×d}\) where n represents sequence length and d enotes feature dimension, we compute task embeddings through a meta-encoder network: </p>
+    <p class="math">\(E_{task }= MetaEncoder\left(X_{support }\right) \in \mathbb{R}^{d} (1)\)</p>
+    <p>where \(X_{support }\) represents the support set examples for the current task. The task embedding is then used to modulate attention scores through learned gating mechanisms: </p>
+    <p class="math">\(\alpha_{task }=\sigma\left(W_{task } \cdot E_{task }+b_{task }\right) \in[0,1]^{3}\)</p>
+    <p>where \(W_{task } \in \mathbb{R}^{3 ×d}\) and \(b_{task } \in \mathbb{R}^{3}\) are learnable parameters, and σ denotes the sigmoid activation function. The threedimensional output controls the relative contribution of different attention components.</p>
+    <p>The prototype-guided attention component leverages class prototypes to guide attention distribution. For each class c in the current task, we compute a prototype vector: </p>
+    <p class="math">\(p_{c}=\frac{1}{\left|S_{c}\right|} \sum_{x_{i} \in S_{c}} f_{\theta}\left(x_{i}\right)\)</p>
+    <p>where \(S_{c}\) represents the support set for class \(c,\) and \(f_{\theta}\) denotes the feature extraction network. These prototypes are then used as additional keys and values in the attention computation: </p>
+    <p class="math">\(A_{prototype }=Attention(Q,[K, P],[V, P]) (4)\)</p>
+    <p>where \(P=[p_{1}, p_{2}, ..., p_{C}]\) represents the concatenated prototype matrix, and C denotes the number of classes. This enables the model to attend to both input tokens and class prototypes simultaneously.</p>
+    <p>The multi-scale context aggregation component processes information at multiple granularities. We implement local attention using a sliding window approach with window size w: </p>
+    <p class="math">\(A_{local}[i,j]=\left\{ \begin{array} {ll}{\frac {exp \left( Q_{i}\cdot K_{j}/\sqrt {d_{k}}\right) }{\sum _{k\in \Omega (i)} exp \left( Q_{i}\cdot K_{k} / \sqrt {d_{k}}\right) }, &{if j \in \Omega (i)}\\ {0, }&{otherwise}\end{array} \right. (5)\)</p>
+    <p>where \(\Omega(i)={max (0, i-w / 2), ..., min (n-1, i+w / 2)}\) defines the local context window. Global attention is computed using standard self-attention across the entire sequence: </p>
+    <p class="math">\(A_{global }=softmax\left(Q K^{T} / \sqrt{d_{k}}\right) (6)\)</p>
+    <p>The final attention output combines these components through adaptive weighting: </p>
+    <p class="math">\(A_{APA}=\alpha_{1} \cdot A_{standard }+\alpha_{2} \cdot A_{prototype}+\alpha_{3} \cdot\left(\beta \cdot A_{local }+(1-\beta) \cdot A_{global }\right)\)</p>
+    <p>where \(\alpha_{1}\) , \(\alpha_{2}\) , \(\alpha_{3}\) are task-aware weights, and β controls the local-global balance.</p>
+
+    <h4>B. Mathematical Formulation</h4>
+    <p>The complete APA mechanism can be formalized as follows. Given input sequence X , we first compute query, key, and value projections: </p>
+    <p class="math">\(Q=X W_{Q}, K=X W_{K}, V=X W_{V} (8)\)</p>
+    <p>where \(W_{Q}\) , \(W_{K}\) , \(W_{V} \in \mathbb{R}^{d ×d}\) are learnable projection matrices. The standard attention component computes: </p>
+    <p class="math">\(A_{standard }=softmax\left(Q K^{T} / \sqrt{d_{k}}\right) V (9)\)</p>
+    <p>The prototype attention component incorporates class prototypes: </p>
+    <p class="math">\(A_{prototype }=softmax\left(\frac{\left[Q K^{T}, Q P^{T}\right]}{\sqrt{d_{k}}}\right)[V, P] (10)\)</p>
+    <p>where the concatenation operation combines token-level and prototype-level attention computations.</p>
+    <p>The multi-scale component integrates local and global attention: </p>
+    <p class="math">\(A_{multi-scale }=\gamma \cdot A_{local }+(1-\gamma) \cdot A_{global } (11)\)</p>
+    <p>where γ is a learnable parameter controlling the local-global trade-off.</p>
+    <p>The final APA output combines all components: </p>
+    <p class="math">\(O_{APA}=LayerNorm\left(X+Dropout\left(\alpha_{task } \cdot\left[A_{standard }, A_{prototype }, A_{prototype }, \cdot\right)\right.\right.\)</p>
+    <p>where \(\alpha_{task }=[\alpha_{1}, \alpha_{2}, \alpha_{3}]\) represents the task-aware attention weights, and LayerNorm and Dropout are applied for regularization. OAPA = LayerNorm (X + Dropout (αtask · [Astandard, Aprototype, Amulti-scale])) memory. We used AdamW optimizer with learning rate 1e−4</p>
+
+    <h4>C. Computational Complexity Analysis</h4>
+    <p>APA maintains comparable computational complexity to standard multi-head attention while providing enhanced functionality. The standard attention component requires \(O(n^{2} d)\) operations, where n represents sequence length and d enotes feature dimension. The prototype attention component adds \(O(C d)\) operations, where C represents the number of classes, typically much smaller than n in few-shot scenarios. The multi-scale attention component introduces additional complexity for local attention computation. Using a sliding window of size u , the computational cost reduces to \(O(n w d)\) , significantly more efficient than global attention when \(w \ll n\) The overall complexity of APA is \(O(n^{2} d+n w d+C d)\) , which remains manageable for typical few-shot learning scenarios where sequence lengths are moderate and class numbers are limited.</p>
+    <p>Memory requirements are similarly optimized. Standard attention requires \(O(n^{2})\) memory for attention matrices, while local attention reduces this to \(O(n w)\) . Prototype attention adds \(O(C d)\) memory for prototype storage. The total memory footprint is \(O(n^{2}+n w+C d)\) , representing a reasonable tradeoff between performance and computational efficiency.</p>
+    
+    <div class="algorithm">
+        ALGORITHM 1 ADAPTIVE PROTOTYPE ATTENTION (APA) MECHANISM<br>
+        ALGORITHM DESCRIPTION A<br>
+        1) ReshapeForMultiHead( \((Q, K, V, h)\) Reshape \(Q / K / V\) into \(n ×h \times(d / h)\) format to adapt to multi-head attention.<br>
+        2) LocalAttention( \((Q, K, V, w)\) : Compute attention only within the sliding window of size w around each query position.<br>
+        3) MetaEncoder( \((X_{support })\) : Task encoder consisting of two fully connected layers with ReLU activation, outputting d -dimensional task embedding.<br>
+        4) ReshapeToOriginal( \((A)\) Reshape the multi-head attention output back to the original \(n ×d\) dimension for feature fusion.
+    </div>
+</body>
+</html>
